@@ -1,0 +1,1361 @@
+#  This is the control script for LAMMPS.
+
+echo			both
+log	    		2.1_Initialize.out
+
+#-------------------------------------------------------------------------------
+# Stage 2.1: Initialize LAMMPS run for 3-d periodic
+#-------------------------------------------------------------------------------
+
+units			real
+boundary		p p p
+atom_style		full
+
+comm_modify mode single cutoff 20.0 vel yes
+pair_style		mie/cut 9.5
+pair_modify             mix geometric
+pair_modify		tail yes
+bond_style		harmonic
+angle_style		harmonic
+dihedral_style		none
+improper_style		none
+special_bonds           lj 0.0 0.0 1.0 coul 0.0 0.0 1.0
+
+box                     tilt large
+read_data		structure.dat
+include			parameters_search_aux.dat
+
+neighbor		2.0 bin
+neigh_modify		delay 0 every 1 check yes
+
+##-------------------------------------------------------------------------------------------##
+## variables 
+##-------------------------------------------------------------------------------------------##
+
+variable           	dt            	equal 15     # 0.5
+timestep           	${dt}
+
+variable           	tdamp         	equal ${dt}*100  # thermostat damping constant
+variable           	Pdamp         	equal ${dt}*1000 # Pdamping constant
+
+variable           	T1 		equal 500           	# Temperature in K
+variable           	T2 		equal 300           	# Temperature in K
+
+variable           	T3 		equal 150           	# Temperature in K
+variable           	T4 		equal 175           	# Temperature in K
+variable           	T5 		equal 200           	# Temperature in K
+variable           	T6 		equal 225           	# Temperature in K
+variable           	T14 		equal 425           	# Temperature in K
+variable           	T15 		equal 450           	# Temperature in K
+variable           	T16 		equal 475           	# Temperature in K
+variable           	T17 		equal 500           	# Temperature in K
+
+variable           	P1 		equal 0.0001*9870       # pressure in atm (1 GPa =~ 9870 atmosferas)
+
+
+variable           	rseed1 		equal 90125550    # RNG seed
+variable           	rseed2 		equal 904297      # RNG seed
+
+variable		sysvol		equal vol
+variable		sysmass	equal mass(all)/6.0221367e+23
+variable		sysdensity	equal v_sysmass/v_sysvol/1.0e-24
+variable		etotal		equal etotal
+variable		pe		equal pe
+variable		ke		equal ke
+variable		lx		equal lx
+variable		ly		equal ly
+variable		lz		equal lz
+
+thermo			100
+thermo_style		custom step press temp pe ke etotal density vol v_sysdensity
+thermo_modify		flush yes
+
+
+##-------------------------------------------------------------------------------------------##
+## Subsets 
+##-------------------------------------------------------------------------------------------##
+
+group		   chain1        molecule 1 
+group		   chain2        molecule 2 
+group		   chain3        molecule 3 
+group		   chain4        molecule 4 
+group		   chain5        molecule 5 
+group		   chain6        molecule 6 
+group		   chain7        molecule 7 
+group		   chain8        molecule 8 
+group		   chain9        molecule 9 
+group		   chain10       molecule 10
+group		   chain11       molecule 11
+group		   chain12       molecule 12
+group		   chain13       molecule 13
+group		   chain14       molecule 14
+group		   chain15       molecule 15
+group		   chain16       molecule 16
+group		   chain17       molecule 17
+group		   chain18       molecule 18
+group		   chain19       molecule 19
+group		   chain20       molecule 20
+group		   chain21       molecule 21
+group		   chain22       molecule 22
+group		   chain23       molecule 23
+group		   chain24       molecule 24
+group		   chain25       molecule 25
+group		   chain26       molecule 26
+group		   chain27       molecule 27
+group		   chain28       molecule 28
+group		   chain29       molecule 29
+group		   chain30       molecule 30
+#group		   chain31       molecule 31
+#group		   chain32       molecule 32
+
+reset_timestep     0
+min_style cg
+minimize           1.0e-10 1.0e-10 10000 10000
+#-------------------------------------------------------------------------------
+# Stage 2.2: Equilibration_1
+#-------------------------------------------------------------------------------
+
+velocity        	all create 500.0 ${rseed1}
+fix             	1 all nve/limit 0.05
+fix             	2 all langevin ${T1} ${T1} ${tdamp} ${rseed2}
+
+run             	1500 #50000
+unfix           	1
+unfix           	2
+
+#-------------------------------------------------------------------------------
+# Stage 2.3: Equilibration_2
+#-------------------------------------------------------------------------------
+
+fix             	1 all npt temp ${T1} ${T1} ${tdamp} iso ${P1} ${P1} ${Pdamp}
+fix             	2 all momentum 1 linear 1 1 1
+
+reset_timestep  	0
+run             	2500 #100000
+unfix           	1
+unfix           	2
+
+#-------------------------------------------------------------------------------
+# Stage 2.4: Equilibration_3
+#-------------------------------------------------------------------------------
+
+fix             	1 all npt temp ${T1} ${T2} ${tdamp} iso ${P1} ${P1} ${Pdamp}
+fix             	2 all momentum 1 linear 1 1 1
+
+reset_timestep  	0
+run             	2500 #100000
+unfix           	1
+unfix           	2
+
+#-------------------------------------------------------------------------------
+# Stage 2.5: Equilibration_4
+#-------------------------------------------------------------------------------
+
+fix             	1 all npt temp ${T2} ${T2} ${tdamp} iso ${P1} ${P1} ${Pdamp}
+fix             	2 all momentum 1 linear 1 1 1
+
+reset_timestep  	0
+run             	2500 #100000
+unfix           	1
+unfix           	2
+
+#-------------------------------------------------------------------------------
+# Stage 2.6: Equilibration_5
+#-------------------------------------------------------------------------------
+
+fix             	1 all npt temp ${T2} ${T3} ${tdamp} iso ${P1} ${P1} ${Pdamp}
+fix             	2 all momentum 1 linear 1 1 1
+
+reset_timestep  	0
+run             	2500 #100000
+unfix           	1
+unfix           	2
+
+#-------------------------------------------------------------------------------
+# Stage 2.7: Equilibration_6
+#-------------------------------------------------------------------------------
+
+fix             	1 all npt temp ${T3} ${T3} ${tdamp} x ${P1} ${P1} ${Pdamp} y ${P1} ${P1} ${Pdamp} z ${P1} ${P1} ${Pdamp}
+fix             	2 all momentum 1 linear 1 1 1
+
+reset_timestep  	0
+run             	15000 #2000000
+unfix           	1
+unfix           	2
+
+log		    	2.28_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.28: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0 file 2.28_gyration_0.txt
+
+compute     		rd_1 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1 file 2.28_gyration_1.txt
+
+compute     		rd_2 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2 file 2.28_gyration_2.txt
+
+compute     		rd_3 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3 file 2.28_gyration_3.txt
+
+compute     		rd_4 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4 file 2.28_gyration_4.txt
+
+compute     		rd_5 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5 file 2.28_gyration_5.txt
+
+compute     		rd_6 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6 file 2.28_gyration_6.txt
+
+compute     		rd_7 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7 file 2.28_gyration_7.txt
+
+compute     		rd_8 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8 file 2.28_gyration_8.txt
+
+compute     		rd_9 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9 file 2.28_gyration_9.txt
+
+compute     		rd_10 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10 file 2.28_gyration_10.txt
+
+compute     		rd_11 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11 file 2.28_gyration_11.txt
+
+compute     		rd_12 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12 file 2.28_gyration_12.txt
+
+compute     		rd_13 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13 file 2.28_gyration_13.txt
+
+compute     		rd_14 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14 file 2.28_gyration_14.txt
+
+compute     		rd_15 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15 file 2.28_gyration_15.txt
+
+compute     		rd_16 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16 file 2.28_gyration_16.txt
+
+compute     		rd_17 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17 file 2.28_gyration_17.txt
+
+compute     		rd_18 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18 file 2.28_gyration_18.txt
+
+compute     		rd_19 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19 file 2.28_gyration_19.txt
+
+compute     		rd_20 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20 file 2.28_gyration_20.txt
+
+compute     		rd_21 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21 file 2.28_gyration_21.txt
+
+compute     		rd_22 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22 file 2.28_gyration_22.txt
+
+compute     		rd_23 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23 file 2.28_gyration_23.txt
+
+compute     		rd_24 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24 file 2.28_gyration_24.txt
+
+compute     		rd_25 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25 file 2.28_gyration_25.txt
+
+compute     		rd_26 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26 file 2.28_gyration_26.txt
+
+compute     		rd_27 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27 file 2.28_gyration_27.txt
+
+compute     		rd_28 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28 file 2.28_gyration_28.txt
+
+compute     		rd_29 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29 file 2.28_gyration_29.txt
+
+#compute     		rd_30 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30 file 2.28_gyration_30.txt
+
+#compute     		rd_31 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31 file 2.28_gyration_31.txt
+
+fix             	1 all npt temp ${T3} ${T3} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.28_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+
+log		    	2.29_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.29: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_0 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_0 file 2.29_gyration_0.txt
+
+compute     		rd_1_0 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_0 file 2.29_gyration_1.txt
+
+compute     		rd_2_0 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_0 file 2.29_gyration_2.txt
+
+compute     		rd_3_0 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_0 file 2.29_gyration_3.txt
+
+compute     		rd_4_0 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_0 file 2.29_gyration_4.txt
+
+compute     		rd_5_0 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_0 file 2.29_gyration_5.txt
+
+compute     		rd_6_0 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_0 file 2.29_gyration_6.txt
+
+compute     		rd_7_0 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_0 file 2.29_gyration_7.txt
+
+compute     		rd_8_0 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_0 file 2.29_gyration_8.txt
+
+compute     		rd_9_0 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_0 file 2.29_gyration_9.txt
+
+compute     		rd_10_0 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_0 file 2.29_gyration_10.txt
+
+compute     		rd_11_0 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_0 file 2.29_gyration_11.txt
+
+compute     		rd_12_0 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_0 file 2.29_gyration_12.txt
+
+compute     		rd_13_0 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_0 file 2.29_gyration_13.txt
+
+compute     		rd_14_0 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_0 file 2.29_gyration_14.txt
+
+compute     		rd_15_0 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_0 file 2.29_gyration_15.txt
+
+compute     		rd_16_0 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_0 file 2.29_gyration_16.txt
+
+compute     		rd_17_0 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_0 file 2.29_gyration_17.txt
+
+compute     		rd_18_0 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_0 file 2.29_gyration_18.txt
+
+compute     		rd_19_0 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_0 file 2.29_gyration_19.txt
+
+compute     		rd_20_0 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_0 file 2.29_gyration_20.txt
+
+compute     		rd_21_0 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_0 file 2.29_gyration_21.txt
+
+compute     		rd_22_0 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_0 file 2.29_gyration_22.txt
+
+compute     		rd_23_0 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_0 file 2.29_gyration_23.txt
+
+compute     		rd_24_0 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_0 file 2.29_gyration_24.txt
+
+compute     		rd_25_0 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_0 file 2.29_gyration_25.txt
+
+compute     		rd_26_0 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_0 file 2.29_gyration_26.txt
+
+compute     		rd_27_0 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_0 file 2.29_gyration_27.txt
+
+compute     		rd_28_0 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_0 file 2.29_gyration_28.txt
+
+compute     		rd_29_0 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_0 file 2.29_gyration_29.txt
+
+#compute     		rd_30_0 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_0 file 2.29_gyration_30.txt
+
+#compute     		rd_31_0 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_0 file 2.29_gyration_31.txt
+
+fix             	1 all npt temp ${T4} ${T4} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.29_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log		    	2.30_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.30: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_1 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_1 file 2.30_gyration_0.txt
+
+compute     		rd_1_1 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_1 file 2.30_gyration_1.txt
+
+compute     		rd_2_1 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_1 file 2.30_gyration_2.txt
+
+compute     		rd_3_1 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_1 file 2.30_gyration_3.txt
+
+compute     		rd_4_1 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_1 file 2.30_gyration_4.txt
+
+compute     		rd_5_1 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_1 file 2.30_gyration_5.txt
+
+compute     		rd_6_1 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_1 file 2.30_gyration_6.txt
+
+compute     		rd_7_1 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_1 file 2.30_gyration_7.txt
+
+compute     		rd_8_1 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_1 file 2.30_gyration_8.txt
+
+compute     		rd_9_1 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_1 file 2.30_gyration_9.txt
+
+compute     		rd_10_1 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_1 file 2.30_gyration_10.txt
+
+compute     		rd_11_1 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_1 file 2.30_gyration_11.txt
+
+compute     		rd_12_1 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_1 file 2.30_gyration_12.txt
+
+compute     		rd_13_1 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_1 file 2.30_gyration_13.txt
+
+compute     		rd_14_1 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_1 file 2.30_gyration_14.txt
+
+compute     		rd_15_1 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_1 file 2.30_gyration_15.txt
+
+compute     		rd_16_1 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_1 file 2.30_gyration_16.txt
+
+compute     		rd_17_1 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_1 file 2.30_gyration_17.txt
+
+compute     		rd_18_1 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_1 file 2.30_gyration_18.txt
+
+compute     		rd_19_1 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_1 file 2.30_gyration_19.txt
+
+compute     		rd_20_1 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_1 file 2.30_gyration_20.txt
+
+compute     		rd_21_1 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_1 file 2.30_gyration_21.txt
+
+compute     		rd_22_1 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_1 file 2.30_gyration_22.txt
+
+compute     		rd_23_1 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_1 file 2.30_gyration_23.txt
+
+compute     		rd_24_1 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_1 file 2.30_gyration_24.txt
+
+compute     		rd_25_1 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_1 file 2.30_gyration_25.txt
+
+compute     		rd_26_1 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_1 file 2.30_gyration_26.txt
+
+compute     		rd_27_1 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_1 file 2.30_gyration_27.txt
+
+compute     		rd_28_1 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_1 file 2.30_gyration_28.txt
+
+compute     		rd_29_1 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_1 file 2.30_gyration_29.txt
+
+#compute     		rd_30_1 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_1 file 2.30_gyration_30.txt
+
+#compute     		rd_31_1 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_1 file 2.30_gyration_31.txt
+
+fix             	1 all npt temp ${T5} ${T5} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.30_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log		    	2.31_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.31: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_2 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_2 file 2.31_gyration_0.txt
+
+compute     		rd_1_2 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_2 file 2.31_gyration_1.txt
+
+compute     		rd_2_2 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_2 file 2.31_gyration_2.txt
+
+compute     		rd_3_2 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_2 file 2.31_gyration_3.txt
+
+compute     		rd_4_2 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_2 file 2.31_gyration_4.txt
+
+compute     		rd_5_2 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_2 file 2.31_gyration_5.txt
+
+compute     		rd_6_2 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_2 file 2.31_gyration_6.txt
+
+compute     		rd_7_2 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_2 file 2.31_gyration_7.txt
+
+compute     		rd_8_2 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_2 file 2.31_gyration_8.txt
+
+compute     		rd_9_2 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_2 file 2.31_gyration_9.txt
+
+compute     		rd_10_2 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_2 file 2.31_gyration_10.txt
+
+compute     		rd_11_2 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_2 file 2.31_gyration_11.txt
+
+compute     		rd_12_2 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_2 file 2.31_gyration_12.txt
+
+compute     		rd_13_2 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_2 file 2.31_gyration_13.txt
+
+compute     		rd_14_2 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_2 file 2.31_gyration_14.txt
+
+compute     		rd_15_2 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_2 file 2.31_gyration_15.txt
+
+compute     		rd_16_2 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_2 file 2.31_gyration_16.txt
+
+compute     		rd_17_2 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_2 file 2.31_gyration_17.txt
+
+compute     		rd_18_2 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_2 file 2.31_gyration_18.txt
+
+compute     		rd_19_2 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_2 file 2.31_gyration_19.txt
+
+compute     		rd_20_2 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_2 file 2.31_gyration_20.txt
+
+compute     		rd_21_2 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_2 file 2.31_gyration_21.txt
+
+compute     		rd_22_2 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_2 file 2.31_gyration_22.txt
+
+compute     		rd_23_2 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_2 file 2.31_gyration_23.txt
+
+compute     		rd_24_2 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_2 file 2.31_gyration_24.txt
+
+compute     		rd_25_2 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_2 file 2.31_gyration_25.txt
+
+compute     		rd_26_2 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_2 file 2.31_gyration_26.txt
+
+compute     		rd_27_2 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_2 file 2.31_gyration_27.txt
+
+compute     		rd_28_2 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_2 file 2.31_gyration_28.txt
+
+compute     		rd_29_2 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_2 file 2.31_gyration_29.txt
+
+#compute     		rd_30_2 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_2 file 2.31_gyration_30.txt
+
+#compute     		rd_31_2 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_2 file 2.31_gyration_31.txt
+
+fix             	1 all npt temp ${T6} ${T6} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.31_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log                     2.39_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.39: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_10 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_10 file 2.39_gyration_0.txt
+
+compute     		rd_1_10 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_10 file 2.39_gyration_1.txt
+
+compute     		rd_2_10 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_10 file 2.39_gyration_2.txt
+
+compute     		rd_3_10 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_10 file 2.39_gyration_3.txt
+
+compute     		rd_4_10 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_10 file 2.39_gyration_4.txt
+
+compute     		rd_5_10 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_10 file 2.39_gyration_5.txt
+
+compute     		rd_6_10 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_10 file 2.39_gyration_6.txt
+
+compute     		rd_7_10 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_10 file 2.39_gyration_7.txt
+
+compute     		rd_8_10 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_10 file 2.39_gyration_8.txt
+
+compute     		rd_9_10 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_10 file 2.39_gyration_9.txt
+
+compute     		rd_10_10 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_10 file 2.39_gyration_10.txt
+
+compute     		rd_11_10 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_10 file 2.39_gyration_11.txt
+
+compute     		rd_12_10 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_10 file 2.39_gyration_12.txt
+
+compute     		rd_13_10 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_10 file 2.39_gyration_13.txt
+
+compute     		rd_14_10 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_10 file 2.39_gyration_14.txt
+
+compute     		rd_15_10 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_10 file 2.39_gyration_15.txt
+
+compute     		rd_16_10 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_10 file 2.39_gyration_16.txt
+
+compute     		rd_17_10 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_10 file 2.39_gyration_17.txt
+
+compute     		rd_18_10 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_10 file 2.39_gyration_18.txt
+
+compute     		rd_19_10 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_10 file 2.39_gyration_19.txt
+
+compute     		rd_20_10 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_10 file 2.39_gyration_20.txt
+
+compute     		rd_21_10 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_10 file 2.39_gyration_21.txt
+
+compute     		rd_22_10 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_10 file 2.39_gyration_22.txt
+
+compute     		rd_23_10 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_10 file 2.39_gyration_23.txt
+
+compute     		rd_24_10 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_10 file 2.39_gyration_24.txt
+
+compute     		rd_25_10 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_10 file 2.39_gyration_25.txt
+
+compute     		rd_26_10 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_10 file 2.39_gyration_26.txt
+
+compute     		rd_27_10 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_10 file 2.39_gyration_27.txt
+
+compute     		rd_28_10 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_10 file 2.39_gyration_28.txt
+
+compute     		rd_29_10 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_10 file 2.39_gyration_29.txt
+
+#compute     		rd_30_10 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_10 file 2.39_gyration_30.txt
+
+#compute     		rd_31_10 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_10 file 2.39_gyration_31.txt
+
+fix             	1 all npt temp ${T14} ${T14} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.39_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log		    	2.40_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.40: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_11 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_11 file 2.40_gyration_0.txt
+
+compute     		rd_1_11 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_11 file 2.40_gyration_1.txt
+
+compute     		rd_2_11 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_11 file 2.40_gyration_2.txt
+
+compute     		rd_3_11 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_11 file 2.40_gyration_3.txt
+
+compute     		rd_4_11 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_11 file 2.40_gyration_4.txt
+
+compute     		rd_5_11 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_11 file 2.40_gyration_5.txt
+
+compute     		rd_6_11 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_11 file 2.40_gyration_6.txt
+
+compute     		rd_7_11 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_11 file 2.40_gyration_7.txt
+
+compute     		rd_8_11 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_11 file 2.40_gyration_8.txt
+
+compute     		rd_9_11 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_11 file 2.40_gyration_9.txt
+
+compute     		rd_10_11 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_11 file 2.40_gyration_10.txt
+
+compute     		rd_11_11 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_11 file 2.40_gyration_11.txt
+
+compute     		rd_12_11 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_11 file 2.40_gyration_12.txt
+
+compute     		rd_13_11 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_11 file 2.40_gyration_13.txt
+
+compute     		rd_14_11 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_11 file 2.40_gyration_14.txt
+
+compute     		rd_15_11 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_11 file 2.40_gyration_15.txt
+
+compute     		rd_16_11 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_11 file 2.40_gyration_16.txt
+
+compute     		rd_17_11 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_11 file 2.40_gyration_17.txt
+
+compute     		rd_18_11 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_11 file 2.40_gyration_18.txt
+
+compute     		rd_19_11 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_11 file 2.40_gyration_19.txt
+
+compute     		rd_20_11 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_11 file 2.40_gyration_20.txt
+
+compute     		rd_21_11 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_11 file 2.40_gyration_21.txt
+
+compute     		rd_22_11 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_11 file 2.40_gyration_22.txt
+
+compute     		rd_23_11 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_11 file 2.40_gyration_23.txt
+
+compute     		rd_24_11 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_11 file 2.40_gyration_24.txt
+
+compute     		rd_25_11 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_11 file 2.40_gyration_25.txt
+
+compute     		rd_26_11 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_11 file 2.40_gyration_26.txt
+
+compute     		rd_27_11 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_11 file 2.40_gyration_27.txt
+
+compute     		rd_28_11 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_11 file 2.40_gyration_28.txt
+
+compute     		rd_29_11 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_11 file 2.40_gyration_29.txt
+
+#compute     		rd_30_11 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_11 file 2.40_gyration_30.txt
+
+#compute     		rd_31_11 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_11 file 2.40_gyration_31.txt
+
+fix             	1 all npt temp ${T15} ${T15} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.40_averages.txt 
+
+run             	20000 # 2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log		    	2.41_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.41: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_12 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_12 file 2.41_gyration_0.txt
+
+compute     		rd_1_12 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_12 file 2.41_gyration_1.txt
+
+compute     		rd_2_12 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_12 file 2.41_gyration_2.txt
+
+compute     		rd_3_12 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_12 file 2.41_gyration_3.txt
+
+compute     		rd_4_12 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_12 file 2.41_gyration_4.txt
+
+compute     		rd_5_12 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_12 file 2.41_gyration_5.txt
+
+compute     		rd_6_12 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_12 file 2.41_gyration_6.txt
+
+compute     		rd_7_12 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_12 file 2.41_gyration_7.txt
+
+compute     		rd_8_12 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_12 file 2.41_gyration_8.txt
+
+compute     		rd_9_12 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_12 file 2.41_gyration_9.txt
+
+compute     		rd_10_12 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_12 file 2.41_gyration_10.txt
+
+compute     		rd_11_12 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_12 file 2.41_gyration_11.txt
+
+compute     		rd_12_12 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_12 file 2.41_gyration_12.txt
+
+compute     		rd_13_12 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_12 file 2.41_gyration_13.txt
+
+compute     		rd_14_12 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_12 file 2.41_gyration_14.txt
+
+compute     		rd_15_12 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_12 file 2.41_gyration_15.txt
+
+compute     		rd_16_12 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_12 file 2.41_gyration_16.txt
+
+compute     		rd_17_12 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_12 file 2.41_gyration_17.txt
+
+compute     		rd_18_12 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_12 file 2.41_gyration_18.txt
+
+compute     		rd_19_12 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_12 file 2.41_gyration_19.txt
+
+compute     		rd_20_12 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_12 file 2.41_gyration_20.txt
+
+compute     		rd_21_12 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_12 file 2.41_gyration_21.txt
+
+compute     		rd_22_12 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_12 file 2.41_gyration_22.txt
+
+compute     		rd_23_12 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_12 file 2.41_gyration_23.txt
+
+compute     		rd_24_12 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_12 file 2.41_gyration_24.txt
+
+compute     		rd_25_12 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_12 file 2.41_gyration_25.txt
+
+compute     		rd_26_12 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_12 file 2.41_gyration_26.txt
+
+compute     		rd_27_12 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_12 file 2.41_gyration_27.txt
+
+compute     		rd_28_12 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_12 file 2.41_gyration_28.txt
+
+compute     		rd_29_12 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_12 file 2.41_gyration_29.txt
+
+#compute     		rd_30_12 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_12 file 2.41_gyration_30.txt
+
+#compute     		rd_31_12 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_12 file 2.41_gyration_31.txt
+
+fix             	1 all npt temp ${T16} ${T16} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.41_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31
+
+log		    	2.42_NPT.out
+##-------------------------------------------------------------------------------------------##
+# Stage 2.42: radiius of gyration 
+##-------------------------------------------------------------------------------------------##
+
+reset_timestep  	0
+
+## radiius of gyration ##
+
+compute     		rd_0_13 chain1 gyration
+fix	    		rd0 all ave/time 1 100 100 c_rd_0_13 file 2.42_gyration_0.txt
+
+compute     		rd_1_13 chain2 gyration
+fix	    		rd1 all ave/time 1 100 100 c_rd_1_13 file 2.42_gyration_1.txt
+
+compute     		rd_2_13 chain3 gyration
+fix	    		rd2 all ave/time 1 100 100 c_rd_2_13 file 2.42_gyration_2.txt
+
+compute     		rd_3_13 chain4 gyration
+fix	    		rd3 all ave/time 1 100 100 c_rd_3_13 file 2.42_gyration_3.txt
+
+compute     		rd_4_13 chain5 gyration
+fix	    		rd4 all ave/time 1 100 100 c_rd_4_13 file 2.42_gyration_4.txt
+
+compute     		rd_5_13 chain6 gyration
+fix	    		rd5 all ave/time 1 100 100 c_rd_5_13 file 2.42_gyration_5.txt
+
+compute     		rd_6_13 chain7 gyration
+fix	    		rd6 all ave/time 1 100 100 c_rd_6_13 file 2.42_gyration_6.txt
+
+compute     		rd_7_13 chain8 gyration
+fix	    		rd7 all ave/time 1 100 100 c_rd_7_13 file 2.42_gyration_7.txt
+
+compute     		rd_8_13 chain9 gyration
+fix	    		rd8 all ave/time 1 100 100 c_rd_8_13 file 2.42_gyration_8.txt
+
+compute     		rd_9_13 chain10 gyration
+fix	    		rd9 all ave/time 1 100 100 c_rd_9_13 file 2.42_gyration_9.txt
+
+compute     		rd_10_13 chain11 gyration
+fix	    		rd10 all ave/time 1 100 100 c_rd_10_13 file 2.42_gyration_10.txt
+
+compute     		rd_11_13 chain12 gyration
+fix	    		rd11 all ave/time 1 100 100 c_rd_11_13 file 2.42_gyration_11.txt
+
+compute     		rd_12_13 chain13 gyration
+fix	    		rd12 all ave/time 1 100 100 c_rd_12_13 file 2.42_gyration_12.txt
+
+compute     		rd_13_13 chain14 gyration
+fix	    		rd13 all ave/time 1 100 100 c_rd_13_13 file 2.42_gyration_13.txt
+
+compute     		rd_14_13 chain15 gyration
+fix	    		rd14 all ave/time 1 100 100 c_rd_14_13 file 2.42_gyration_14.txt
+
+compute     		rd_15_13 chain16 gyration
+fix	    		rd15 all ave/time 1 100 100 c_rd_15_13 file 2.42_gyration_15.txt
+
+compute     		rd_16_13 chain17 gyration
+fix	    		rd16 all ave/time 1 100 100 c_rd_16_13 file 2.42_gyration_16.txt
+
+compute     		rd_17_13 chain18 gyration
+fix	    		rd17 all ave/time 1 100 100 c_rd_17_13 file 2.42_gyration_17.txt
+
+compute     		rd_18_13 chain19 gyration
+fix	    		rd18 all ave/time 1 100 100 c_rd_18_13 file 2.42_gyration_18.txt
+
+compute     		rd_19_13 chain20 gyration
+fix	    		rd19 all ave/time 1 100 100 c_rd_19_13 file 2.42_gyration_19.txt
+
+compute     		rd_20_13 chain21 gyration
+fix	    		rd20 all ave/time 1 100 100 c_rd_20_13 file 2.42_gyration_20.txt
+
+compute     		rd_21_13 chain22 gyration
+fix	    		rd21 all ave/time 1 100 100 c_rd_21_13 file 2.42_gyration_21.txt
+
+compute     		rd_22_13 chain23 gyration
+fix	    		rd22 all ave/time 1 100 100 c_rd_22_13 file 2.42_gyration_22.txt
+
+compute     		rd_23_13 chain24 gyration
+fix	    		rd23 all ave/time 1 100 100 c_rd_23_13 file 2.42_gyration_23.txt
+
+compute     		rd_24_13 chain25 gyration
+fix	    		rd24 all ave/time 1 100 100 c_rd_24_13 file 2.42_gyration_24.txt
+
+compute     		rd_25_13 chain26 gyration
+fix	    		rd25 all ave/time 1 100 100 c_rd_25_13 file 2.42_gyration_25.txt
+
+compute     		rd_26_13 chain27 gyration
+fix	    		rd26 all ave/time 1 100 100 c_rd_26_13 file 2.42_gyration_26.txt
+
+compute     		rd_27_13 chain28 gyration
+fix	    		rd27 all ave/time 1 100 100 c_rd_27_13 file 2.42_gyration_27.txt
+
+compute     		rd_28_13 chain29 gyration
+fix	    		rd28 all ave/time 1 100 100 c_rd_28_13 file 2.42_gyration_28.txt
+
+compute     		rd_29_13 chain30 gyration
+fix	    		rd29 all ave/time 1 100 100 c_rd_29_13 file 2.42_gyration_29.txt
+
+#compute     		rd_30_13 chain31 gyration
+#fix	    		rd30 all ave/time 1 100 100 c_rd_30_13 file 2.42_gyration_30.txt
+
+#compute     		rd_31_13 chain32 gyration
+#fix	    		rd31 all ave/time 1 100 100 c_rd_31_13 file 2.42_gyration_31.txt
+
+fix             	1 all npt temp ${T17} ${T17} ${tdamp} iso ${P1} ${P1} ${Pdamp}  
+fix             	2 all momentum 1 linear 1 1 1
+fix			3 all ave/time 1 1000 1000 v_sysdensity v_etotal v_pe v_ke file 2.42_averages.txt 
+
+run             	20000 #2000000
+unfix	    		1
+unfix	    		2
+unfix	    		3
+
+unfix	    		rd0
+unfix	    		rd1
+unfix	    		rd2
+unfix	    		rd3
+unfix	    		rd4
+unfix	    		rd5
+unfix	    		rd6
+unfix	    		rd7
+unfix	    		rd8
+unfix	    		rd9
+unfix	    		rd10
+unfix	    		rd11
+unfix	    		rd12
+unfix	    		rd13
+unfix	    		rd14
+unfix	    		rd15
+unfix	    		rd16
+unfix	    		rd17
+unfix	    		rd18
+unfix	    		rd19
+unfix	    		rd20
+unfix	    		rd21
+unfix	    		rd22
+unfix	    		rd23
+unfix	    		rd24
+unfix	    		rd25
+unfix	    		rd26
+unfix	    		rd27
+unfix	    		rd28
+unfix	    		rd29
+#unfix	    		rd30
+#unfix	    		rd31

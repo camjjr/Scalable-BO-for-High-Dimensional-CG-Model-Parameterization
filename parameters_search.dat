@@ -1,0 +1,21 @@
+bond_coeff               1 k_bond_t1t2 l_t1t2      # T1    T2
+bond_coeff               2 k_bond_t2t3 l_t2t3      # T2    T3
+bond_coeff               3 k_bond_t1t3 l_t1t3     # T1    T3
+bond_coeff               4 k_bond_t3t4 l_t3t4      # T3    T4
+bond_coeff               5 k_bond_t4t5 l_t4t5      # T4    T5
+bond_coeff               6 k_bond_t5t5 l_t5t5      # T5    T5
+
+angle_coeff              1 kt1t2t3 theta_t1t2t3 # T1    T2      T3
+angle_coeff              2 kt1t3t2 theta_t1t3t2 # T1    T3      T2
+angle_coeff              3 kt2t1t3 theta_t2t1t3 # T2    T1      T3
+angle_coeff              4 kt2t3t4 theta_t2t3t4 # T2    T3      T4
+angle_coeff              5 kt3t4t5 theta_t3t4t5 # T3    T4      T5
+angle_coeff              6 kt4t5t5 theta_t4t5t5 # T4    T5      T5
+angle_coeff              7 kt5t5t5 theta_t5t5t5 # T5    T5      T5
+
+pair_coeff                          1     1   epsilon_1   sigma_t1 gamma_r1 6.00000e+00 # T1 -
+pair_coeff                          2     2   epsilon_2   sigma_t2 gamma_r2 6.00000e+00 # T2 -
+pair_coeff                          3     3   epsilon_3   sigma_t3 gamma_r3 6.00000e+00 # T3 -
+pair_coeff                          4     4   epsilon_4   sigma_t4 gamma_r4 6.00000e+00 # T4 -
+pair_coeff                          5     5   epsilon_5   sigma_t5 gamma_r5 6.00000e+00 # T5 -
+
