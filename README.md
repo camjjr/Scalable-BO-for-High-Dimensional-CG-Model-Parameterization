@@ -7,7 +7,7 @@ The code automatically updates force field parameters (bond lengths, angles, sig
 ## How it works
 
 * Parameter Suggestion:
-Optuna generates a new set of parameters within defined ranges (e.g., bond force constants, angle constants, Lennard-Jones parameters).
+Optuna generates a new set of parameters within defined ranges (e.g., bond force constants, angle constants, Mie potential parameters).
 
 * Parameter Injection:
 The script updates the parameters_search.dat file by replacing placeholder tokens with trial values using the sed command.
