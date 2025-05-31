@@ -1,0 +1,21 @@
+bond_coeff 	         1 4.874 4.04	# T1	T2
+bond_coeff 	         2 9.186 3.738	# T2	T3
+bond_coeff 	         3 4.129 4.797	# T1	T3
+bond_coeff 	         4 6.554 4.004	# T3	T4
+bond_coeff 	         5 5.822 2.506	# T4	T5
+bond_coeff 	         6 1.884 4.476	# T5	T5
+
+angle_coeff 	         1 5.297 122.298	# T1	T2	T3
+angle_coeff 	         2 7.333 98.273	# T1	T3	T2
+angle_coeff 	         3 11.997 86.685	# T2	T1	T3
+angle_coeff 	         4 6.772 166.067	# T2	T3	T4
+angle_coeff 	         5 11.235 73.313	# T3	T4	T5
+angle_coeff 	         6 6.555 130.409	# T4	T5	T5
+angle_coeff 	         7 1.708 172.586	# T5	T5	T5
+
+pair_coeff			    1     1   1.453   3.94000 1.5827e+01 6.00000e+00	# T1 - 
+pair_coeff			    2     2   1.440   4.55300 1.5629e+01 6.00000e+00	# T2 - 
+pair_coeff			    3     3   1.391   2.84700 1.0176e+01 6.00000e+00	# T3 - 
+pair_coeff			    4     4   1.169   4.09400 1.1503e+01 6.00000e+00	# T4 - 
+pair_coeff			    5     5   0.512   4.77300 1.1939e+01 6.00000e+00	# T5 - 
+
